@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import {Injectable} from '@nestjs/common';
+import {Cron, CronExpression} from '@nestjs/schedule';
 import Redis from 'ioredis';
 
 
@@ -17,7 +17,7 @@ class PC
 }
 
 
-const KEY: string = 'key';
+const KEY: string = 'pcsUsage';
 @Injectable()
 export class ReadFromRedis {
   private readonly redisClient: Redis;
@@ -43,8 +43,7 @@ export class ReadFromRedis {
 
   async getAllPCIds(): Promise<string[]> {
     // 获取整个有序集合
-    const ids = await this.redisClient.zrange('pcsUsage', 0, -1);
-    return ids;
+    return this.redisClient.zrange(KEY, 0, -1);
   }
 
   @Cron(CronExpression.EVERY_SECOND)
