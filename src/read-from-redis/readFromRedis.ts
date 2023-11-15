@@ -2,6 +2,21 @@ import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import Redis from 'ioredis';
 
+
+class PC
+{
+  id: number;
+  name: string;
+  usage: number;
+  constructor(id:number, name:string, usage:number)
+  {
+    this.id = id;
+    this.name = name;
+    this.usage = usage;
+  }
+}
+
+
 const KEY: string = 'key';
 @Injectable()
 export class ReadFromRedis {
@@ -13,13 +28,31 @@ export class ReadFromRedis {
     });
   }
 
+  // @Cron(CronExpression.EVERY_SECOND)
+  async getPC(pcId: number): Promise<PC | null> {
+    const pcData = await this.redisClient.hgetall(`pc:${pcId}`);
+
+    if (Object.keys(pcData).length === 0) {
+      // 没有找到PC数据
+      return null;
+    }
+    // console.log(pcData);
+    // 将哈希数据转换为PC对象
+    return new PC(pcId, pcData.name, parseFloat(pcData.usage));
+  }
+
+  async getAllPCIds(): Promise<string[]> {
+    // 获取整个有序集合
+    const ids = await this.redisClient.zrange('pcsUsage', 0, -1);
+    return ids;
+  }
+
   @Cron(CronExpression.EVERY_SECOND)
-  async handleCron() {
-    try {
-      const value = await this.redisClient.get(KEY);
-      console.log(`Value from Redis: ${value}`);
-    } catch (error) {
-      console.error('Error fetching from Redis:', error);
+  async printAllPCs() {
+    const ids = await this.getAllPCIds();
+    for (const id of ids) {
+      const pc = await this.getPC(parseInt(id.split(':')[1]));
+      console.log(pc);
     }
   }
 }
