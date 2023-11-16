@@ -1,56 +1,75 @@
-import {Redis} from "ioredis";
+import { Redis } from "ioredis";
 
 const redis = new Redis();
 const KEY: string = 'pcsUsage';
-class PC
-{
+
+class PC {
     id: number;
     name: string;
     usage: number;
-    constructor(id:number, name:string, usage:number)
-    {
+    work: string;
+
+    constructor(id: number, name: string, usage: number, work: string) {
         this.id = id;
         this.name = name;
         this.usage = usage;
+        this.work = work;
     }
-
 }
 
 async function updatePC(pc: PC) {
-    // 使用HSET存储PC的详细信息
-    await redis.hset(`pc:${pc.id}`, 'name', pc.name, 'usage', pc.usage);
-
-    // 使用ZADD更新PC的使用情况
+    const workValue = pc.work === null ? "null" : pc.work;
+    await redis.hset(`pc:${pc.id}`, 'name', pc.name, 'usage', pc.usage, 'work', workValue);
     await redis.zadd(KEY, pc.usage, `pc:${pc.id}`);
 }
-async function getPC(pcId: number): Promise<PC | null> {
-    const pcData = await redis.hgetall(`pc:${pcId}`);
 
-    if (Object.keys(pcData).length === 0) {
-        // 没有找到PC数据
-        return null;
-    }
-
-    // 将哈希数据转换为PC对象
-    return new PC(pcId, pcData.name, parseFloat(pcData.usage));
-}
-async function setPC(){
-    //随机生成0-100的usage
-    const usage = Math.floor(Math.random() * 100);
-    const pc = new PC(0, '1', usage);
-    await updatePC(pc).then(() => {
-        console.log(`PC ${pc.id} updated, usage: ${pc.usage}`);
-    });
+async function workA(pc: PC) {
+    pc.work = 'workA';
+    await updatePC(pc);
+    console.log(`PC ${pc.id} started workA`);
+    await new Promise(resolve => setTimeout(resolve, 1000)); // 延时1秒
+    pc.work = 'null';
+    await updatePC(pc);
 }
 
-async function setPC2(){
-    //随机生成0-100的usage
-    const usage = Math.floor(Math.random() * 100);
-    const pc = new PC(1, '2', usage);
-    await updatePC(pc).then(() => {
-        console.log(`PC ${pc.id} updated, usage: ${pc.usage}`);
-    });
+async function workB(pc: PC) {
+    pc.work = 'workB';
+    await updatePC(pc);
+    console.log(`PC ${pc.id} started workB`);
+    await new Promise(resolve => setTimeout(resolve, 2000)); // 延时2秒
+    pc.work = 'null';
+    await updatePC(pc);
 }
 
-setInterval(setPC, 1000);
-setInterval(setPC2, 1000);
+async function workC(pc: PC) {
+    pc.work = 'workC';
+    await updatePC(pc);
+    console.log(`PC ${pc.id} started workC`);
+    await new Promise(resolve => setTimeout(resolve, 3000)); // 延时3秒
+    pc.work = 'null';
+    await updatePC(pc);
+}
+
+//模拟空闲
+async function workD(pc: PC) {
+    pc.work = 'null';
+    await updatePC(pc);
+    console.log(`PC ${pc.id} is in null`);
+    await new Promise(resolve => setTimeout(resolve, 2500)); // 延时2.5秒
+    pc.work = 'null';
+    await updatePC(pc)
+}
+
+async function simulateRandomWork(pcId: number) {
+    const pc = new PC(pcId, `PC${pcId}`, Math.floor(Math.random() * 100), 'null');
+    const works = [workA, workB, workC, workD];
+    const work = works[Math.floor(Math.random() * works.length)];
+
+    await work(pc);
+    await updatePC(pc);
+    console.log(`PC ${pc.id} finished ${pc.work || 'work'}, usage: ${pc.usage}`);
+}
+
+// 测试模拟工作
+setInterval(() => simulateRandomWork(0), 4000);
+setInterval(() => simulateRandomWork(1), 4000);

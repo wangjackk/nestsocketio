@@ -1,23 +1,23 @@
-import {Injectable} from '@nestjs/common';
-import {Cron, CronExpression} from '@nestjs/schedule';
+import { Injectable } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import Redis from 'ioredis';
 
-
-class PC
-{
+class PC {
   id: number;
   name: string;
   usage: number;
-  constructor(id:number, name:string, usage:number)
-  {
+  work: string;
+
+  constructor(id: number, name: string, usage: number, work: string) {
     this.id = id;
     this.name = name;
     this.usage = usage;
+    this.work = work;
   }
 }
 
-
 const KEY: string = 'pcsUsage';
+
 @Injectable()
 export class ReadFromRedis {
   private readonly redisClient: Redis;
@@ -28,7 +28,6 @@ export class ReadFromRedis {
     });
   }
 
-  // @Cron(CronExpression.EVERY_SECOND)
   async getPC(pcId: number): Promise<PC | null> {
     const pcData = await this.redisClient.hgetall(`pc:${pcId}`);
 
@@ -36,9 +35,9 @@ export class ReadFromRedis {
       // 没有找到PC数据
       return null;
     }
-    // console.log(pcData);
+
     // 将哈希数据转换为PC对象
-    return new PC(pcId, pcData.name, parseFloat(pcData.usage));
+    return new PC(pcId, pcData.name, parseFloat(pcData.usage), pcData.work);
   }
 
   async getAllPCIds(): Promise<string[]> {
